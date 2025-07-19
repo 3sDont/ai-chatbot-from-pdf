@@ -1,8 +1,18 @@
+# App core
 streamlit==1.35.0
+
+# PDF processing
 PyPDF2==3.0.1
-sentence-transformers==2.2.0
-transformers==4.41.1
-torch>=2.0.0
-faiss-cpu==1.7.4
-numpy
-scikit-learn
+
+# FAISS for similarity search
+faiss-cpu==1.7.4.post2
+
+# LLM & Embedding interfaces
+openai==1.33.0
+langchain==0.2.1
+
+# Env config
+python-dotenv==1.0.1
+
+# Optionally for better embedding/vector support
+tqdm==4.66.4

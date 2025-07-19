@@ -37,7 +37,7 @@ AI-CHATBOT-FROM-PDF/
 
 1. Clone dự án về máy:
    ```bash
-   git clone https://github.com/your-username/AI-CHATBOT-FROM-PDF.git
+   git clone https://github.com/3sDont/AI-CHATBOT-FROM-PDF.git
    cd AI-CHATBOT-FROM-PDF
    ```
 
@@ -71,9 +71,9 @@ Bạn có thể deploy ứng dụng này lên [Streamlit Community Cloud](https:
 ## 👨‍💻 Tác giả
 
 - Trần Bá Đông – Đại học Khoa học Tự nhiên TP.HCM
-- Contact: [dongtb@hcmus.edu.vn](mailto:dongtb@hcmus.edu.vn)
+- Contact: [dongtb@hcmus.edu.vn](mailto:tranbadong9471@gmail.com)
 
 ---
 
 📢 *Hãy thử trải nghiệm tại:*  
-👉 [https://your-username-ai-chatbot-from-pdf.streamlit.app](https://your-username-ai-chatbot-from-pdf.streamlit.app)
+👉 [https://3sDont-ai-chatbot-from-pdf.streamlit.app](https://3sDont-ai-chatbot-from-pdf.streamlit.app)

@@ -71,7 +71,7 @@ Bạn có thể deploy ứng dụng này lên [Streamlit Community Cloud](https:
 ## 👨‍💻 Tác giả
 
 - Trần Bá Đông – Đại học Khoa học Tự nhiên TP.HCM
-- Contact: [dongtb@hcmus.edu.vn](mailto:tranbadong9471@gmail.com)
+- Contact: [tranbadong9471@gmail.com](mailto:tranbadong9471@gmail.com)
 
 ---
 

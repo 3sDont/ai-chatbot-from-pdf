@@ -4,30 +4,20 @@ import numpy as np
 import pickle
 from sklearn.metrics.pairwise import cosine_similarity
 
-
 class VectorStore:
     def __init__(self):
-        self.embeddings = []     # Danh sách các embedding vectors
-        self.text_chunks = []    # Danh sách đoạn văn gốc
+        self.embeddings = []
+        self.text_chunks = []
 
     def add_embeddings(self, embeddings, chunks):
-        """
-        embeddings: List[np.array], dạng (n_chunks x dim)
-        chunks: List[str] đoạn văn gốc
-        """
         self.embeddings.extend(embeddings)
         self.text_chunks.extend(chunks)
 
     def search(self, query_vector, top_k=3):
-        """
-        Trả về top_k đoạn văn giống nhất với vector truy vấn
-        """
         if not self.embeddings:
             return []
-
         embedding_matrix = np.array(self.embeddings)
         query_vector = np.array(query_vector).reshape(1, -1)
-
         similarities = cosine_similarity(query_vector, embedding_matrix)[0]
         top_indices = np.argsort(similarities)[-top_k:][::-1]
         return [self.text_chunks[i] for i in top_indices]

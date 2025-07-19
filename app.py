@@ -1,45 +1,45 @@
 # app.py
 
 import streamlit as st
-from src.pdf_loader import PDFLoader
+from src.pdf_reader import PDFReader
+from src.text_splitter import TextSplitter
 from src.embedder import Embedder
 from src.vector_store import VectorStore
 from src.llm_model import LLMModel
-from src.rag_chain import RAGPipeline
-import tempfile
+from src.rag_chain import RAGChain
+import os
 
-st.set_page_config(page_title="AI Chatbot học từ PDF", layout="centered")
-st.title("📚 AI Chatbot hỗ trợ học tập từ giáo trình PDF")
+# Cấu hình giao diện Streamlit
+st.set_page_config(page_title="📘 AI Chatbot từ PDF", layout="wide")
+st.title("📘 AI Chatbot hỗ trợ học tập")
+st.markdown("Trợ lý ảo có khả năng đọc file PDF và trả lời câu hỏi dựa trên nội dung tài liệu bạn cung cấp.")
 
-# --- Tải file PDF từ người dùng ---
-uploaded_file = st.file_uploader("📄 Tải lên file giáo trình (.pdf)", type=["pdf"])
+# Upload file
+uploaded_file = st.file_uploader("📎 Tải lên tài liệu PDF của bạn", type="pdf")
 
-if uploaded_file:
-    with st.spinner("🔍 Đang xử lý file PDF..."):
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-            tmp_file.write(uploaded_file.read())
-            pdf_path = tmp_file.name
+# Tạo các đối tượng pipeline
+pdf_reader = PDFReader()
+text_splitter = TextSplitter(chunk_size=500, chunk_overlap=50)
+embedder = Embedder()
+vector_store = VectorStore()
+llm = LLMModel()
+rag_chain = RAGChain(embedder, vector_store, llm)
 
-        # 1. Tách văn bản
-        loader = PDFLoader(pdf_path)
-        chunks = loader.split_pdf()
+# Xử lý khi có file upload
+if uploaded_file is not None:
+    with st.spinner("📖 Đang đọc và xử lý tài liệu..."):
+        text = pdf_reader.read(uploaded_file)
+        chunks = text_splitter.split(text)
+        embeddings = embedder.embed_documents(chunks)
+        vector_store.add_embeddings(embeddings, chunks)
+        vector_store.save()  # lưu vào embedding_store.pkl
 
-        # 2. Mã hóa & lưu vector
-        embedder = Embedder()
-        vectors = embedder.encode(chunks)
-        vector_store = VectorStore()
-        vector_store.add_documents(chunks, vectors)
+    st.success("✅ Tài liệu đã được xử lý xong! Bạn có thể bắt đầu đặt câu hỏi.")
 
-        # 3. Load LLM
-        llm = LLMModel()
-        rag = RAGPipeline(embedder, vector_store, llm)
+    # Khung hỏi đáp
+    query = st.text_input("💬 Nhập câu hỏi của bạn về tài liệu:")
 
-        st.success("✅ File đã xử lý xong! Bạn có thể đặt câu hỏi.")
-
-        # --- Chat interface ---
-        question = st.text_input("💬 Câu hỏi của bạn:")
-        if question:
-            with st.spinner("🤖 Đang suy nghĩ..."):
-                answer = rag.ask(question)
-                st.markdown("### ✅ Trả lời:")
-                st.markdown(answer)
+    if query:
+        with st.spinner("🤖 Đang tạo câu trả lời..."):
+            answer = rag_chain.query(query)
+        st.markdown(f"**📌 Trả lời:** {answer}")

@@ -28,8 +28,8 @@ def load_models():
     """Tải và cache tất cả các model nặng một lần duy nhất."""
     st.info("⏳ Đang tải các mô hình AI... Lần đầu có thể mất vài phút.")
     embedder = Embedder()
-    # Bạn có thể đổi lại model yêu thích, ví dụ: "microsoft/phi-2"
-    llm = LLMModel()
+    # Dùng model mặc định trong LLMModel là google/flan-t5-base
+    llm = LLMModel() 
     st.success("✅ Các mô hình đã sẵn sàng!")
     return embedder, llm
 

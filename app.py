@@ -81,11 +81,6 @@ with st.sidebar:
                 else:
                     status.update(label="Lỗi đọc file", state="error")
     
-    st.markdown("---")
-    st.markdown(
-        "**Mẹo:** Để có kết quả tốt nhất với các tài liệu phức tạp (công thức, bảng biểu), "
-        "hãy chạy script `preprocess_pdf.py` trên máy của bạn và tải file `.md` đã được xử lý lên."
-    )
 
 # --- Giao diện Chat Chính ---
 if not st.session_state.document_processed:

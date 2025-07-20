@@ -2,7 +2,9 @@
 
 # Core cho ứng dụng Streamlit và RAG
 streamlit
-langchain
+
+langchain-core # Thêm hoặc cập nhật
+langchain-groq # <-- THÊM DÒNG QUAN TRỌNG NÀY
 numpy
 scikit-learn
 torch

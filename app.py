@@ -1,45 +1,101 @@
 # app.py
 
 import streamlit as st
+import os
 from src.pdf_reader import PDFReader
 from src.text_splitter import TextSplitter
 from src.embedder import Embedder
 from src.vector_store import VectorStore
 from src.llm_model import LLMModel
 from src.rag_chain import RAGChain
-import os
 
-# Cấu hình giao diện Streamlit
+# --- CẤU HÌNH GIAO DIỆN ---
 st.set_page_config(page_title="📘 AI Chatbot từ PDF", layout="wide")
-st.title("📘 AI Chatbot hỗ trợ học tập")
+st.title("📘 AI Chatbot Hỗ Trợ Học Tập từ PDF")
 st.markdown("Trợ lý ảo có khả năng đọc file PDF và trả lời câu hỏi dựa trên nội dung tài liệu bạn cung cấp.")
 
-# Upload file
-uploaded_file = st.file_uploader("📎 Tải lên tài liệu PDF của bạn", type="pdf")
+# --- CACHING CÁC MODEL TỐN KÉM TÀI NGUYÊN ---
+@st.cache_resource
+def load_llm_model():
+    st.write("⏳ Đang tải mô hình ngôn ngữ (LLM)... Lần đầu có thể mất vài phút.")
+    model = LLMModel(model_name="vinai/PhoGPT-4B-Chat") # Sử dụng model tiếng Việt tốt hơn
+    st.write("✅ Đã tải xong mô hình LLM.")
+    return model
 
-# Tạo các đối tượng pipeline
-pdf_reader = PDFReader()
-text_splitter = TextSplitter(chunk_size=500, chunk_overlap=50)
-embedder = Embedder()
-vector_store = VectorStore()
-llm = LLMModel()
-rag_chain = RAGChain(embedder, vector_store, llm)
+@st.cache_resource
+def load_embedding_model():
+    st.write("⏳ Đang tải mô hình Embedding...")
+    embedder = Embedder(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    st.write("✅ Đã tải xong mô hình Embedding.")
+    return embedder
 
-# Xử lý khi có file upload
-if uploaded_file is not None:
-    with st.spinner("📖 Đang đọc và xử lý tài liệu..."):
-        text = pdf_reader.read(uploaded_file)
-        chunks = text_splitter.split(text)
-        embeddings = embedder.embed_documents(chunks)
-        vector_store.add_embeddings(embeddings, chunks)
-        vector_store.save()  # lưu vào embedding_store.pkl
+llm = load_llm_model()
+embedder = load_embedding_model()
 
-    st.success("✅ Tài liệu đã được xử lý xong! Bạn có thể bắt đầu đặt câu hỏi.")
+# --- QUẢN LÝ TRẠNG THÁI SESSION ---
+if "rag_chain" not in st.session_state:
+    st.session_state.rag_chain = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    # Khung hỏi đáp
-    query = st.text_input("💬 Nhập câu hỏi của bạn về tài liệu:")
+# --- GIAO DIỆN UPLOAD VÀ XỬ LÝ ---
+with st.sidebar:
+    st.header("Tài liệu của bạn")
+    uploaded_file = st.file_uploader("📎 Tải lên tài liệu PDF", type="pdf", label_visibility="collapsed")
+    
+    if uploaded_file:
+        if st.button("Xử lý tài liệu"):
+            with st.spinner("📖 Đang đọc và xử lý tài liệu..."):
+                try:
+                    # 1. Đọc PDF
+                    pdf_reader = PDFReader()
+                    text_content = pdf_reader.read(uploaded_file)
 
-    if query:
-        with st.spinner("🤖 Đang tạo câu trả lời..."):
-            answer = rag_chain.query(query)
-        st.markdown(f"**📌 Trả lời:** {answer}")
+                    # 2. Chia nhỏ văn bản
+                    text_splitter = TextSplitter(chunk_size=1000, chunk_overlap=100)
+                    chunks = text_splitter.split(text_content)
+                    
+                    if not chunks:
+                         st.error("Không thể trích xuất nội dung từ PDF. Vui lòng thử file khác.")
+                    else:
+                        # 3. Tạo embedding và lưu vào Vector Store
+                        vector_store = VectorStore()
+                        embeddings = embedder.embed_documents(chunks)
+                        vector_store.add_embeddings(embeddings, chunks)
+
+                        # 4. Tạo RAG chain và lưu vào session state
+                        st.session_state.rag_chain = RAGChain(embedder, vector_store, llm)
+                        
+                        # Xóa lịch sử chat cũ
+                        st.session_state.messages = []
+                        st.success("✅ Tài liệu đã được xử lý xong! Bạn có thể bắt đầu trò chuyện.")
+                except Exception as e:
+                    st.error(f"Đã xảy ra lỗi: {e}")
+
+# --- GIAO DIỆN CHAT ---
+st.header("💬 Bắt đầu trò chuyện")
+
+# Hiển thị các tin nhắn đã có
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Nhận input từ người dùng
+if prompt := st.chat_input("Đặt câu hỏi về tài liệu của bạn..."):
+    # Thêm tin nhắn của người dùng vào lịch sử
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Kiểm tra xem RAG chain đã sẵn sàng chưa
+    if st.session_state.rag_chain is None:
+        st.warning("Vui lòng tải lên và xử lý một file PDF trước khi đặt câu hỏi.")
+    else:
+        # Tạo câu trả lời
+        with st.chat_message("assistant"):
+            with st.spinner("🤖 Đang suy nghĩ..."):
+                response = st.session_state.rag_chain.query(prompt)
+                st.markdown(response)
+        
+        # Thêm câu trả lời của bot vào lịch sử
+        st.session_state.messages.append({"role": "assistant", "content": response})

@@ -24,14 +24,17 @@ st.set_page_config(page_title="📚 AI Chatbot Pro", layout="wide", initial_side
 # --- HÀM TIỆN ÍCH ĐỂ HIỂN THỊ PDF ---
 def display_pdf(file):
     """
-    Hiển thị một file PDF trong Streamlit bằng cách nhúng nó vào iframe.
+    Hiển thị một file PDF trong Streamlit bằng cách nhúng nó vào thẻ <embed>.
+    Phương pháp này tương thích tốt hơn với chính sách bảo mật của trình duyệt.
     """
     # Đọc file
     file.seek(0)
     base64_pdf = base64.b64encode(file.read()).decode('utf-8')
-    # Nhúng vào iframe
-    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf"></iframe>'
-    # Hiển thị
+    
+    # Tạo HTML để nhúng PDF bằng thẻ <embed>
+    pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf">'
+    
+    # Hiển thị HTML
     st.markdown(pdf_display, unsafe_allow_html=True)
 
 # --- KHỞI TẠO CÁC ĐỐI TƯỢNG (DÙNG CACHE) ---

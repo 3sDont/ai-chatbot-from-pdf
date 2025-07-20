@@ -14,7 +14,7 @@ from src.components.data_loader import DataLoader
 from src.components.chunker import Chunker
 from src.components.embedder import Embedder
 from src.components.vector_store import VectorStore
-from src.pipelines.llm_models import FlanT5
+from src.pipelines.llm_models import GroqLLM
 from src.pipelines.rag_pipeline import RAGPipeline
 
 st.set_page_config(page_title="📚 AI Chatbot hỗ trợ đọc file PDF", layout="wide")
@@ -24,10 +24,16 @@ st.title("📚 AI Chatbot hỗ trợ đọc file PDF")
 
 @st.cache_resource
 def initialize_models():
-    """Tải các model AI nặng."""
+    """Tải các model AI nặng và khởi tạo LLM API."""
+    st.info("Đang khởi tạo các kết nối...")
     embedder = Embedder()
-    llm = FlanT5()
-    return embedder, llm
+    try:
+        llm = GroqLLM() # <-- THAY ĐỔI DÒNG NÀY
+        st.success("Kết nối AI đã sẵn sàng.")
+        return embedder, llm
+    except ValueError as e:
+        st.error(str(e))
+        return None, None
 
 # Khởi tạo pipeline RAG một lần cho mỗi session
 # Dùng session_state thay vì cache_resource để có thể reset pipeline khi đổi file
@@ -37,8 +43,8 @@ def initialize_rag_pipeline(embedder, llm):
     return RAGPipeline(chunker, embedder, vector_store, llm)
 
 embedder_model, llm_model = initialize_models()
-if 'rag_pipeline' not in st.session_state:
-    st.session_state.rag_pipeline = initialize_rag_pipeline(embedder_model, llm_model)
+if not (embedder_model and llm_model):
+    st.stop() # Dừng ứng dụng nếu không khởi tạo được model
 
 # --- GIAO DIỆN UPLOAD VÀ XỬ LÝ ---
 with st.sidebar:

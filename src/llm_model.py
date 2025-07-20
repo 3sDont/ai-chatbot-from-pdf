@@ -7,35 +7,44 @@ class LLMModel:
     def __init__(self, model_name: str = "vinai/bartpho-word"):
         """
         Khởi tạo một pipeline Question Answering.
-        Đây là cách hiệu quả để dùng các model như BART, RoBERTa cho tác vụ RAG.
         """
-        # Xác định thiết bị (sử dụng GPU nếu có)
         device = 0 if torch.cuda.is_available() else -1
-        
-        # Tạo pipeline với model và tokenizer được chỉ định
         self.qa_pipeline = pipeline(
             "question-answering",
             model=model_name,
             tokenizer=model_name,
             device=device
         )
+        # Lấy độ dài tối đa mà model có thể xử lý từ tokenizer
+        self.max_length = self.qa_pipeline.tokenizer.model_max_length
 
     def generate_answer(self, context: str, question: str, **kwargs) -> str:
         """
         Sử dụng pipeline để tìm câu trả lời trong context.
+        Xử lý trường hợp context quá dài.
         """
         if not context or not question:
             return "Ngữ cảnh hoặc câu hỏi không được để trống."
 
-        # pipeline sẽ trả về một dictionary
-        result = self.qa_pipeline(question=question, context=context)
-        
-        # Lấy câu trả lời có điểm số cao nhất
-        answer = result.get('answer', "Không tìm thấy câu trả lời phù hợp trong văn bản.")
-        
-        # Các model QA đôi khi trả về câu trả lời rất ngắn. 
-        # Chúng ta có thể làm nó tự nhiên hơn một chút.
-        if result['score'] < 0.1: # Nếu độ tin cậy thấp
-             return "Tôi không chắc chắn, nhưng thông tin liên quan có thể là: " + answer
+        # ====================================================================
+        # SỬA LỖI TYPEERROR: CẮT BỚT CONTEXT NẾU QUÁ DÀI
+        # Tránh đưa context quá dài vào model, gây lỗi
+        # Chúng ta trừ đi độ dài câu hỏi và một chút buffer
+        max_context_len = self.max_length - len(self.qa_pipeline.tokenizer.encode(question)) - 5 
+        if len(context) > max_context_len:
+            context = context[:max_context_len]
+        # ====================================================================
+            
+        try:
+            result = self.qa_pipeline(question=question, context=context)
+            answer = result.get('answer', "Không tìm thấy câu trả lời phù hợp trong văn bản.")
+            
+            # Cải thiện định dạng câu trả lời
+            if result.get('score', 0) < 0.1: # Nếu độ tin cậy thấp
+                 return "Tôi không chắc chắn, nhưng có vẻ thông tin liên quan là: " + answer
 
-        return answer.capitalize() + "."
+            return answer.capitalize() + "."
+            
+        except Exception as e:
+            print(f"Lỗi trong quá trình QA pipeline: {e}")
+            return "Đã xảy ra lỗi khi xử lý yêu cầu của bạn."

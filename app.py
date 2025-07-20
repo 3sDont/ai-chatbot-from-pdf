@@ -17,8 +17,8 @@ from src.components.vector_store import VectorStore
 from src.pipelines.llm_models import FlanT5
 from src.pipelines.rag_pipeline import RAGPipeline
 
-st.set_page_config(page_title="📚 AI Chatbot Siêu Cấp", layout="wide")
-st.title("📚 AI Chatbot Siêu Cấp")
+st.set_page_config(page_title="📚 AI Chatbot hỗ trợ đọc file PDF", layout="wide")
+st.title("📚 AI Chatbot hỗ trợ đọc file PDF")
 
 # --- KHỞI TẠO CÁC ĐỐI TƯỢNG (DÙNG CACHE) ---
 

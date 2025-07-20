@@ -1,21 +1,15 @@
 # requirements.txt
 
-# Core cho ứng dụng Streamlit và RAG
 streamlit
-
-langchain-core # Thêm hoặc cập nhật
-langchain-groq # <-- THÊM DÒNG QUAN TRỌNG NÀY
+langchain-core
+langchain-groq
 numpy
 scikit-learn
 torch
 accelerate
 transformers
 sentence-transformers
-
-# Cho Module 1: Tiền xử lý PDF -> Markdown
 marker-pdf
 PyMuPDF
-
-# Các thư viện phụ thuộc có thể cần cho một số model
 einops
 groq

@@ -25,50 +25,62 @@ st.title("📚 AI Chatbot Siêu Cấp")
 @st.cache_resource
 def initialize_models():
     """Tải các model AI nặng."""
-    st.info("Đang tải các mô hình AI...")
     embedder = Embedder()
     llm = FlanT5()
-    st.success("Mô hình AI đã sẵn sàng.")
     return embedder, llm
 
-@st.cache_resource
-def initialize_pipeline(_embedder, _llm):
-    """Khởi tạo pipeline RAG."""
-    # Các thành phần không cần model AI có thể khởi tạo ở đây
+# Khởi tạo pipeline RAG một lần cho mỗi session
+# Dùng session_state thay vì cache_resource để có thể reset pipeline khi đổi file
+def initialize_rag_pipeline(embedder, llm):
     chunker = Chunker()
     vector_store = VectorStore()
-    rag_pipeline = RAGPipeline(chunker, _embedder, vector_store, _llm)
-    return rag_pipeline
+    return RAGPipeline(chunker, embedder, vector_store, llm)
 
-# Tải model và khởi tạo pipeline
 embedder_model, llm_model = initialize_models()
-rag_pipeline = initialize_pipeline(embedder_model, llm_model)
+if 'rag_pipeline' not in st.session_state:
+    st.session_state.rag_pipeline = initialize_rag_pipeline(embedder_model, llm_model)
 
-# --- XỬ LÝ TÀI LIỆU ---
-
-# Sử dụng session_state để đánh dấu tài liệu đã được xử lý hay chưa
-if "document_processed" not in st.session_state:
-    st.session_state.document_processed = False
-
+# --- GIAO DIỆN UPLOAD VÀ XỬ LÝ ---
 with st.sidebar:
-    st.header("Tài liệu")
-    # Thay vì upload, chúng ta chọn file đã xử lý
-    # Trong thực tế, bạn có thể tạo một dropdown để chọn từ các file trong `documents/markdowns`
-    processed_doc_path = "documents/markdowns/your_document.md" # <-- THAY TÊN FILE
+    st.header("Tài liệu của bạn")
+    st.info(
+        "**Lựa chọn 1 (Nhanh):** Tải trực tiếp file PDF để có câu trả lời ngay.\n\n"
+        "**Lựa chọn 2 (Chất lượng cao):** Sử dụng script `preprocess_pdf.py` trên máy của bạn để chuyển PDF thành Markdown, sau đó tải file Markdown lên."
+    )
+    
+    uploaded_file = st.file_uploader("Tải lên file PDF hoặc Markdown", type=["pdf", "md"])
 
-    if st.button("Nạp và Xử lý Tài liệu"):
-        if os.path.exists(processed_doc_path):
+    if uploaded_file is not None:
+        # Sử dụng session_state để lưu tên file và tránh xử lý lại không cần thiết
+        if st.session_state.get("last_uploaded_filename") != uploaded_file.name:
+            st.session_state.last_uploaded_filename = uploaded_file.name
+            st.session_state.document_processed = False
+
+        if not st.session_state.get("document_processed", False):
             with st.spinner("Đang nạp và xử lý tài liệu..."):
                 loader = DataLoader()
-                content = loader.load(processed_doc_path)
-                rag_pipeline.setup_with_text(content)
-                st.session_state.document_processed = True
-            st.success("Tài liệu đã được nạp và sẵn sàng để hỏi đáp.")
-        else:
-            st.error(f"File không tồn tại: {processed_doc_path}. Vui lòng chạy script `preprocess_pdf.py` trước.")
+                content = ""
+                file_type = uploaded_file.type
+                
+                if "pdf" in file_type:
+                    st.write("Đang xử lý file PDF (chế độ nhanh)...")
+                    content = loader.load_from_upload(uploaded_file)
+                elif "markdown" in file_type or "text" in file_type:
+                    st.write("Đang xử lý file Markdown (chế độ chất lượng cao)...")
+                    # Streamlit đọc file text/md dưới dạng string
+                    content = uploaded_file.getvalue().decode("utf-8")
+                
+                if content:
+                    # Khởi tạo lại pipeline để xóa dữ liệu cũ
+                    st.session_state.rag_pipeline = initialize_rag_pipeline(embedder_model, llm_model)
+                    st.session_state.rag_pipeline.setup_with_text(content)
+                    st.session_state.document_processed = True
+                    st.session_state.messages = [] # Xóa lịch sử chat cũ
+                    st.success("Tài liệu đã được nạp và sẵn sàng để hỏi đáp.")
+                else:
+                    st.error("Không thể đọc nội dung từ file được tải lên.")
 
 # --- GIAO DIỆN CHAT ---
-
 st.header("💬 Trò chuyện với tài liệu")
 
 if "messages" not in st.session_state:
@@ -83,11 +95,11 @@ if prompt := st.chat_input("Đặt câu hỏi về tài liệu..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    if not st.session_state.document_processed:
-        st.warning("Vui lòng nhấn nút 'Nạp và Xử lý Tài liệu' ở thanh bên trước.")
+    if not st.session_state.get("document_processed", False):
+        st.warning("Vui lòng tải lên và chờ xử lý tài liệu trước khi đặt câu hỏi.")
     else:
         with st.chat_message("assistant"):
             with st.spinner("🤖 Đang suy nghĩ..."):
-                response = rag_pipeline.query(prompt)
+                response = st.session_state.rag_pipeline.query(prompt)
                 st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})

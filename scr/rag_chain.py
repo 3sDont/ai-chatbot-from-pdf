@@ -1,4 +1,7 @@
 # src/rag_chain.py
+from .embedder import Embedder
+from .vector_store import VectorStore
+from .llm_model import LLMModel
 
 class RAGChain:
     def __init__(self, embedder, vector_store, llm):

@@ -18,7 +18,7 @@ from src.pipelines.rag_pipeline import RAGPipeline
 
 # --- Cấu hình trang ---
 st.set_page_config(page_title="📚 AI Chatbot Pro", layout="wide", initial_sidebar_state="expanded")
-st.title("📚 AI Chatbot Pro: Hỏi Đáp Cùng Tài Liệu Của Bạn")
+st.title("📚 Hỏi đi BaDong trả lời cho")
 
 # --- Khởi tạo các đối tượng (dùng cache để tối ưu) ---
 @st.cache_resource

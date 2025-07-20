@@ -16,3 +16,4 @@ PyMuPDF
 
 # Các thư viện phụ thuộc có thể cần cho một số model
 einops
+groq

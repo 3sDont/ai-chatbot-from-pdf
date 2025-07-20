@@ -1,30 +1,36 @@
-# src/rag_chain.py
+# src/pipelines/rag_pipeline.py
+
 from typing import List
+from ..components.chunker import Chunker
+from ..components.embedder import Embedder
+from ..components.vector_store import VectorStore
+from .llm_models import FlanT5
 
-# Sử dụng import tương đối (dấu chấm ở đầu)
-from .llm_model import LLMModel
-from .vector_store import VectorStore
-from .embedder import Embedder
-
-class RAGChain:
-    def __init__(self, llm: LLMModel, vector_store: VectorStore, embedder: Embedder):
-        self.llm = llm
-        self.vector_store = vector_store
+class RAGPipeline:
+    def __init__(self, chunker: Chunker, embedder: Embedder, vector_store: VectorStore, llm: FlanT5):
+        self.chunker = chunker
         self.embedder = embedder
+        self.vector_store = vector_store
+        self.llm = llm
 
-    def query(self, question: str, top_k: int = 3) -> str:
-        """Thực hiện chuỗi RAG: embed, search, generate."""
-        # 1. Embed câu hỏi
+    def setup_with_text(self, text_content: str):
+        """Xử lý một văn bản và xây dựng vector store."""
+        chunks = self.chunker.split(text_content)
+        embeddings = self.embedder.embed_documents(chunks)
+        self.vector_store.add_documents(chunks, embeddings)
+        print("✅ Đã xây dựng xong Vector Store từ văn bản.")
+
+    def query(self, question: str) -> str:
+        """Trả lời câu hỏi dựa trên RAG."""
+        if self.vector_store.embeddings.size == 0:
+            return "Lỗi: Vector Store chưa được xây dựng. Vui lòng chạy setup_with_text trước."
+
         query_embedding = self.embedder.embed_query(question)
-        
-        # 2. Tìm kiếm trong vector store
-        relevant_chunks = self.vector_store.search(query_embedding, top_k=top_k)
+        relevant_chunks = self.vector_store.search(query_embedding, top_k=3)
         
         if not relevant_chunks:
-            return "Rất tiếc, tôi không tìm thấy bất kỳ thông tin nào liên quan trong tài liệu."
+            return "Tôi không tìm thấy thông tin liên quan trong tài liệu."
         
-        # 3. Tạo context
         context = "\n\n---\n\n".join(relevant_chunks)
         
-        # 4. Tạo câu trả lời
-        return self.llm.generate_answer(context, question)
+        return self.llm.generate(context, question)

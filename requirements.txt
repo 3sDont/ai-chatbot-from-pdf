@@ -1,8 +1,9 @@
 # requirements.txt
 
 streamlit
-langchain-core
-langchain-groq
+langchain               # Cài đặt gói chính để có các thành phần cơ bản
+langchain-text-splitters # <-- THÊM GÓI CHỨA CÁC SPLITTER
+langchain-groq          # Gói tích hợp Groq
 numpy
 scikit-learn
 torch

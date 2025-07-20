@@ -1,23 +1,15 @@
-# src/text_splitter.py (Phiên bản không dùng LangChain)
+# src/text_splitter.py
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 class TextSplitter:
-    def __init__(self, chunk_size=500, chunk_overlap=50):
-        # Lưu ý: chunk_size và chunk_overlap ở đây tính theo số từ
+    def __init__(self, chunk_size=1000, chunk_overlap=100):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+            length_function=len
+        )
 
     def split(self, text):
-        """
-        Chia văn bản thành các đoạn (chunk) có độ dài chunk_size, với một phần chồng lặp (overlap)
-        """
-        words = text.split()
-        chunks = []
-        start = 0
-        while start < len(words):
-            end = start + self.chunk_size
-            chunk = " ".join(words[start:end])
-            chunks.append(chunk)
-            if end >= len(words):
-                break
-            start += self.chunk_size - self.chunk_overlap
-        return chunks
+        return self.splitter.split_text(text)

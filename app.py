@@ -29,7 +29,7 @@ def load_models():
     st.info("⏳ Đang tải các mô hình AI... Lần đầu có thể mất vài phút.")
     embedder = Embedder()
     # Bạn có thể đổi lại model yêu thích, ví dụ: "microsoft/phi-2"
-    llm = LLMModel(model_name="vinai/PhoGPT-4B-Chat")
+    llm = LLMModel()
     st.success("✅ Các mô hình đã sẵn sàng!")
     return embedder, llm
 

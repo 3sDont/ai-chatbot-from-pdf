@@ -4,70 +4,75 @@ import streamlit as st
 import os
 import sys
 
-# ====================================================================
-# GIẢI QUYẾT VẤN ĐỀ IMPORT KHI DEPLOY
-# Thêm thư mục gốc của dự án vào sys.path để Python tìm thấy 'src'
+# Thêm thư mục gốc vào sys.path
 project_root = os.path.dirname(os.path.abspath(__file__))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-# ====================================================================
 
-from src.pdf_reader import PDFReader
-from src.text_splitter import TextSplitter
-from src.embedder import Embedder
-from src.vector_store import VectorStore
-from src.llm_model import LLMModel
-from src.rag_chain import RAGChain
+# Import từ kiến trúc mới
+from src.components.data_loader import DataLoader
+from src.components.chunker import Chunker
+from src.components.embedder import Embedder
+from src.components.vector_store import VectorStore
+from src.pipelines.llm_models import FlanT5
+from src.pipelines.rag_pipeline import RAGPipeline
 
-st.set_page_config(page_title="📘 AI Chatbot từ PDF", layout="wide")
-st.title("📘 AI Chatbot Hỗ Trợ Học Tập từ PDF")
-st.markdown("Trợ lý ảo có khả năng đọc và hiểu nội dung từ tài liệu PDF bạn cung cấp.")
+st.set_page_config(page_title="📚 AI Chatbot Siêu Cấp", layout="wide")
+st.title("📚 AI Chatbot Siêu Cấp")
+
+# --- KHỞI TẠO CÁC ĐỐI TƯỢNG (DÙNG CACHE) ---
 
 @st.cache_resource
-def load_models():
-    """Tải và cache tất cả các model nặng một lần duy nhất."""
-    st.info("⏳ Đang tải các mô hình AI... Lần đầu có thể mất vài phút.")
+def initialize_models():
+    """Tải các model AI nặng."""
+    st.info("Đang tải các mô hình AI...")
     embedder = Embedder()
-    # Dùng model mặc định trong LLMModel là google/flan-t5-base
-    llm = LLMModel() 
-    st.success("✅ Các mô hình đã sẵn sàng!")
+    llm = FlanT5()
+    st.success("Mô hình AI đã sẵn sàng.")
     return embedder, llm
 
-embedder, llm = load_models()
+@st.cache_resource
+def initialize_pipeline(_embedder, _llm):
+    """Khởi tạo pipeline RAG."""
+    # Các thành phần không cần model AI có thể khởi tạo ở đây
+    chunker = Chunker()
+    vector_store = VectorStore()
+    rag_pipeline = RAGPipeline(chunker, _embedder, vector_store, _llm)
+    return rag_pipeline
 
-if "rag_chain" not in st.session_state:
-    st.session_state.rag_chain = None
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# Tải model và khởi tạo pipeline
+embedder_model, llm_model = initialize_models()
+rag_pipeline = initialize_pipeline(embedder_model, llm_model)
+
+# --- XỬ LÝ TÀI LIỆU ---
+
+# Sử dụng session_state để đánh dấu tài liệu đã được xử lý hay chưa
+if "document_processed" not in st.session_state:
+    st.session_state.document_processed = False
 
 with st.sidebar:
-    st.header("Tài liệu của bạn")
-    uploaded_file = st.file_uploader("📎 Tải lên tài liệu PDF", type="pdf", label_visibility="collapsed")
+    st.header("Tài liệu")
+    # Thay vì upload, chúng ta chọn file đã xử lý
+    # Trong thực tế, bạn có thể tạo một dropdown để chọn từ các file trong `documents/markdowns`
+    processed_doc_path = "documents/markdowns/your_document.md" # <-- THAY TÊN FILE
 
-    if uploaded_file:
-        if st.button("Xử lý tài liệu"):
-            with st.spinner("📖 Đang đọc, phân tích và ghi nhớ tài liệu..."):
-                try:
-                    pdf_reader = PDFReader()
-                    text_content = pdf_reader.read(uploaded_file)
+    if st.button("Nạp và Xử lý Tài liệu"):
+        if os.path.exists(processed_doc_path):
+            with st.spinner("Đang nạp và xử lý tài liệu..."):
+                loader = DataLoader()
+                content = loader.load(processed_doc_path)
+                rag_pipeline.setup_with_text(content)
+                st.session_state.document_processed = True
+            st.success("Tài liệu đã được nạp và sẵn sàng để hỏi đáp.")
+        else:
+            st.error(f"File không tồn tại: {processed_doc_path}. Vui lòng chạy script `preprocess_pdf.py` trước.")
 
-                    if not text_content or not text_content.strip():
-                        st.error("Không thể trích xuất nội dung từ file PDF. Vui lòng thử file khác.")
-                    else:
-                        text_splitter = TextSplitter(chunk_size=1000, chunk_overlap=100)
-                        chunks = text_splitter.split(text_content)
-                        
-                        vector_store = VectorStore()
-                        embeddings = embedder.embed_documents(chunks)
-                        vector_store.add_documents(chunks, embeddings)
+# --- GIAO DIỆN CHAT ---
 
-                        st.session_state.rag_chain = RAGChain(llm, vector_store, embedder)
-                        st.session_state.messages = []
-                        st.success("✅ Đã xử lý xong! Bạn có thể bắt đầu trò chuyện.")
-                except Exception as e:
-                    st.error(f"Đã xảy ra lỗi: {e}")
+st.header("💬 Trò chuyện với tài liệu")
 
-st.header("💬 Bắt đầu trò chuyện")
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
@@ -78,11 +83,11 @@ if prompt := st.chat_input("Đặt câu hỏi về tài liệu..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    if st.session_state.rag_chain is None:
-        st.warning("Vui lòng tải lên và xử lý một file PDF trước khi đặt câu hỏi.")
+    if not st.session_state.document_processed:
+        st.warning("Vui lòng nhấn nút 'Nạp và Xử lý Tài liệu' ở thanh bên trước.")
     else:
         with st.chat_message("assistant"):
             with st.spinner("🤖 Đang suy nghĩ..."):
-                response = st.session_state.rag_chain.query(prompt)
+                response = rag_pipeline.query(prompt)
                 st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})

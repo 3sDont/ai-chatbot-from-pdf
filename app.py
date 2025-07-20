@@ -4,12 +4,11 @@ import streamlit as st
 import os
 import sys
 
-# Thêm thư mục gốc vào sys.path
+# Thêm thư mục gốc vào sys.path để import từ src
 project_root = os.path.dirname(os.path.abspath(__file__))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Import từ kiến trúc mới
 from src.components.data_loader import DataLoader
 from src.components.chunker import Chunker
 from src.components.embedder import Embedder
@@ -17,95 +16,97 @@ from src.components.vector_store import VectorStore
 from src.pipelines.llm_models import GroqLLM
 from src.pipelines.rag_pipeline import RAGPipeline
 
-st.set_page_config(page_title="📚 AI Chatbot hỗ trợ đọc file PDF", layout="wide")
-st.title("📚 AI Chatbot hỗ trợ đọc file PDF")
+# --- Cấu hình trang ---
+st.set_page_config(page_title="📚 AI Chatbot Pro", layout="wide", initial_sidebar_state="expanded")
+st.title("📚 AI Chatbot Pro: Hỏi Đáp Cùng Tài Liệu Của Bạn")
 
-# --- KHỞI TẠO CÁC ĐỐI TƯỢNG (DÙNG CACHE) ---
-
+# --- Khởi tạo các đối tượng (dùng cache để tối ưu) ---
 @st.cache_resource
 def initialize_models():
-    """Tải các model AI nặng và khởi tạo LLM API."""
-    st.info("Đang khởi tạo các kết nối...")
-    embedder = Embedder()
+    """Tải model embedding và khởi tạo kết nối LLM."""
     try:
-        llm = GroqLLM() # <-- THAY ĐỔI DÒNG NÀY
-        st.success("Kết nối AI đã sẵn sàng.")
+        embedder = Embedder()
+        llm = GroqLLM()
         return embedder, llm
     except ValueError as e:
-        st.error(str(e))
+        st.error(f"Lỗi khởi tạo: {e}. Vui lòng kiểm tra API key trong Streamlit Secrets.")
         return None, None
 
-# Khởi tạo pipeline RAG một lần cho mỗi session
-# Dùng session_state thay vì cache_resource để có thể reset pipeline khi đổi file
 def initialize_rag_pipeline(embedder, llm):
-    chunker = Chunker()
-    vector_store = VectorStore()
-    return RAGPipeline(chunker, embedder, vector_store, llm)
+    """Khởi tạo pipeline RAG cho mỗi session."""
+    return RAGPipeline(Chunker(), embedder, VectorStore(), llm)
 
+# Tải model và kiểm tra lỗi
 embedder_model, llm_model = initialize_models()
 if not (embedder_model and llm_model):
-    st.stop() # Dừng ứng dụng nếu không khởi tạo được model
+    st.stop()
 
-# --- GIAO DIỆN UPLOAD VÀ XỬ LÝ ---
+# Khởi tạo pipeline trong session state
+if 'rag_pipeline' not in st.session_state:
+    st.session_state.rag_pipeline = initialize_rag_pipeline(embedder_model, llm_model)
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+if 'document_processed' not in st.session_state:
+    st.session_state.document_processed = False
+
+# --- Giao diện Sidebar để Upload và Xử lý ---
 with st.sidebar:
-    st.header("Tài liệu của bạn")
+    st.header("⚙️ Bảng Điều Khiển")
     st.info(
-        "**Lựa chọn 1 (Nhanh):** Tải trực tiếp file PDF để có câu trả lời ngay.\n\n"
-        "**Lựa chọn 2 (Chất lượng cao):** Sử dụng script `preprocess_pdf.py` trên máy của bạn để chuyển PDF thành Markdown, sau đó tải file Markdown lên."
+        "**Bước 1:** Tải lên file PDF hoặc Markdown.\n\n"
+        "**Bước 2:** Chờ xử lý xong và bắt đầu hỏi đáp!"
     )
     
-    uploaded_file = st.file_uploader("Tải lên file PDF hoặc Markdown", type=["pdf", "md"])
+    uploaded_file = st.file_uploader("Tải lên tài liệu", type=["pdf", "md"])
 
-    if uploaded_file is not None:
-        # Sử dụng session_state để lưu tên file và tránh xử lý lại không cần thiết
-        if st.session_state.get("last_uploaded_filename") != uploaded_file.name:
-            st.session_state.last_uploaded_filename = uploaded_file.name
+    if uploaded_file:
+        # Xử lý chỉ khi có file mới được tải lên
+        if st.session_state.get("last_file_name") != uploaded_file.name:
+            st.session_state.last_file_name = uploaded_file.name
             st.session_state.document_processed = False
+            st.session_state.messages = [] # Reset chat khi có file mới
 
-        if not st.session_state.get("document_processed", False):
-            with st.spinner("Đang nạp và xử lý tài liệu..."):
+            with st.status("⚙️ Đang xử lý tài liệu...", expanded=True) as status:
+                st.write("Đang đọc file...")
                 loader = DataLoader()
-                content = ""
-                file_type = uploaded_file.type
-                
-                if "pdf" in file_type:
-                    st.write("Đang xử lý file PDF (chế độ nhanh)...")
-                    content = loader.load_from_upload(uploaded_file)
-                elif "markdown" in file_type or "text" in file_type:
-                    st.write("Đang xử lý file Markdown (chế độ chất lượng cao)...")
-                    # Streamlit đọc file text/md dưới dạng string
-                    content = uploaded_file.getvalue().decode("utf-8")
+                content = loader.load_from_upload(uploaded_file)
                 
                 if content:
-                    # Khởi tạo lại pipeline để xóa dữ liệu cũ
+                    st.write("Đang phân tích và ghi nhớ nội dung...")
+                    # Reset pipeline để nạp dữ liệu mới
                     st.session_state.rag_pipeline = initialize_rag_pipeline(embedder_model, llm_model)
                     st.session_state.rag_pipeline.setup_with_text(content)
                     st.session_state.document_processed = True
-                    st.session_state.messages = [] # Xóa lịch sử chat cũ
-                    st.success("Tài liệu đã được nạp và sẵn sàng để hỏi đáp.")
+                    status.update(label="✅ Xử lý hoàn tất!", state="complete", expanded=False)
                 else:
-                    st.error("Không thể đọc nội dung từ file được tải lên.")
+                    status.update(label="Lỗi đọc file", state="error")
+    
+    st.markdown("---")
+    st.markdown(
+        "**Mẹo:** Để có kết quả tốt nhất với các tài liệu phức tạp (công thức, bảng biểu), "
+        "hãy chạy script `preprocess_pdf.py` trên máy của bạn và tải file `.md` đã được xử lý lên."
+    )
 
-# --- GIAO DIỆN CHAT ---
-st.header("💬 Trò chuyện với tài liệu")
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# --- Giao diện Chat Chính ---
+if not st.session_state.document_processed:
+    st.info("Chào mừng bạn! Vui lòng tải lên một tài liệu ở thanh bên để bắt đầu.")
+else:
+    st.success(f"Đã sẵn sàng! Hỏi đáp về tài liệu: **{st.session_state.last_file_name}**")
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("Đặt câu hỏi về tài liệu..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    if not st.session_state.get("document_processed", False):
-        st.warning("Vui lòng tải lên và chờ xử lý tài liệu trước khi đặt câu hỏi.")
+if prompt := st.chat_input("Câu hỏi của bạn về tài liệu..."):
+    if not st.session_state.document_processed:
+        st.warning("Vui lòng tải lên và chờ xử lý tài liệu trước.")
     else:
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
         with st.chat_message("assistant"):
-            with st.spinner("🤖 Đang suy nghĩ..."):
+            with st.spinner("🤖 AI đang suy nghĩ..."):
                 response = st.session_state.rag_pipeline.query(prompt)
                 st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})

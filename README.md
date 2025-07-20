@@ -99,8 +99,3 @@ Có 2 chế độ để chạy ứng dụng:
     GROQ_API_KEY = "gsk_YourGroqApiKeyHere"
     ```
 4.  Nhấn "Save" và deploy. Ứng dụng của bạn sẽ hoạt động online!
-
-## 👨‍💻 Tác Giả
-
-- Trần Bá Đông – Đại học Khoa học Tự nhiên TP.HCM
-- Liên hệ: [tranbadong9471@gmail.com](mailto:tranbadong9471@gmail.com)

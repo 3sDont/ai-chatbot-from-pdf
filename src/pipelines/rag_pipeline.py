@@ -4,10 +4,10 @@ from typing import List
 from ..components.chunker import Chunker
 from ..components.embedder import Embedder
 from ..components.vector_store import VectorStore
-from .llm_models import FlanT5
+from .llm_models import GroqLLM 
 
 class RAGPipeline:
-    def __init__(self, chunker: Chunker, embedder: Embedder, vector_store: VectorStore, llm: FlanT5):
+    def __init__(self, chunker, embedder, vector_store, llm: GroqLLM):
         self.chunker = chunker
         self.embedder = embedder
         self.vector_store = vector_store

@@ -18,12 +18,13 @@ class VectorStore:
         else:
             self.embeddings = np.vstack([self.embeddings, embeddings])
 
-    def search(self, query_embedding: np.ndarray, top_k: int = 3) -> List[str]:
+    def search(self, query_embedding: np.ndarray, top_k: int = 4) -> List[str]:
         if self.embeddings.size == 0:
             return []
         
         query_vec = query_embedding.reshape(1, -1)
         sim_scores = cosine_similarity(query_vec, self.embeddings)[0]
+        # Lọc ra các chỉ số có điểm > 0 để tránh kết quả không liên quan
         top_indices = np.argsort(sim_scores)[-top_k:][::-1]
         
-        return [self.documents[i] for i in top_indices]
+        return [self.documents[i] for i in top_indices if sim_scores[i] > 0.3]

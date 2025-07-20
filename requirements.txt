@@ -1,11 +1,18 @@
 # requirements.txt
+
+# Core cho ứng dụng Streamlit và RAG
 streamlit
-PyMuPDF
-sentence-transformers
+langchain
 numpy
 scikit-learn
-transformers
 torch
 accelerate
-langchain
+transformers
+sentence-transformers
+
+# Cho Module 1: Tiền xử lý PDF -> Markdown
+marker-pdf
+PyMuPDF
+
+# Các thư viện phụ thuộc có thể cần cho một số model
 einops

@@ -28,19 +28,20 @@ Dự án này xây dựng một **AI Chatbot** mạnh mẽ, có khả năng "đ�
 ## ⚙️ Kiến Trúc Dự Án
 
 Dự án được cấu trúc theo các module chuyên biệt để tối đa hóa khả năng bảo trì và mở rộng:
+```bash
 AI-CHATBOT-FROM-PDF/
-│
-├── documents/ # Nơi chứa dữ liệu (PDF gốc và Markdown đã xử lý)
-├── src/
-│ ├── components/ # Các "viên gạch" xây dựng: Loader, Chunker, Embedder,...
-│ └── pipelines/ # Nơi lắp ráp components thành một dây chuyền RAG hoàn chỉnh
-│
-├── app.py # Giao diện Streamlit (mỏng, nhẹ)
-├── preprocess_pdf.py # Script độc lập, mạnh mẽ để chuyển PDF -> Markdown
-├── requirements.txt # Danh sách các thư viện cần cài đặt
-└── README.md # Chính là file này
-
-
+    │
+    ├── documents/ # Nơi chứa dữ liệu (PDF gốc và Markdown đã xử lý)
+    ├── src/
+    │ ├── components/ # Các "viên gạch" xây dựng: Loader, Chunker, Embedder,...
+    │ └── pipelines/ # Nơi lắp ráp components thành một dây chuyền RAG hoàn chỉnh
+    │
+    ├── app.py # Giao diện Streamlit (mỏng, nhẹ)
+    ├── preprocess_pdf.py # Script độc lập, mạnh mẽ để chuyển PDF -> Markdown
+    ├── requirements.txt # Danh sách các thư viện cần cài đặt
+    └── README.md # Chính là file này
+```
+    
 ## 🚀 Hướng Dẫn Chạy Local
 
 ### 1. Điều Kiện Tiên Quyết
